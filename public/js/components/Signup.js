@@ -1,5 +1,5 @@
-// Login Component
-const LoginComponent = {
+// Signup Component
+const SignupComponent = {
   render() {
     const root = document.getElementById('app-root');
     root.innerHTML = `
@@ -9,42 +9,43 @@ const LoginComponent = {
           <span class="logo-text">Fresh<span class="logo-accent">Cart</span></span>
         </div>
         <div class="login-card">
-          <h1 class="login-title">Sign in</h1>
-          <form id="login-form" onsubmit="LoginComponent.handleLogin(event)">
+          <h1 class="login-title">Create account</h1>
+          <form id="signup-form" onsubmit="SignupComponent.handleSignup(event)">
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="login-label">Your name</label>
+              <input type="text" required class="login-input" placeholder="First and last name" />
+            </div>
             <div class="form-group" style="margin-bottom: 16px;">
               <label class="login-label">Email or mobile phone number</label>
               <input type="email" required class="login-input" />
             </div>
             <div class="form-group" style="margin-bottom: 24px;">
               <label class="login-label">Password</label>
-              <input type="password" required class="login-input" />
+              <input type="password" required class="login-input" placeholder="At least 6 characters" minlength="6" />
             </div>
             <button type="submit" class="btn-ecommerce-primary">
               Continue
             </button>
           </form>
           <div class="login-legal">
-            By continuing, you agree to FreshCart's 
+            By creating an account, you agree to FreshCart's 
             <a href="#">Conditions of Use</a> and 
             <a href="#">Privacy Notice</a>.
           </div>
-          <div class="login-help">
-            <a href="#">Need help?</a>
-          </div>
         </div>
         <div class="login-divider">
-          <span>New to FreshCart?</span>
+          <span>Already have an account?</span>
         </div>
-        <button class="btn-ecommerce-secondary" onclick="App.navigate('signup')">
-          Create your FreshCart account
+        <button class="btn-ecommerce-secondary" onclick="App.navigate('login')">
+          Sign in
         </button>
       </div>
     `;
   },
 
-  handleLogin(event) {
+  handleSignup(event) {
     event.preventDefault();
-    App.showToast('Logged in successfully!', 'success');
+    App.showToast('Account created successfully!', 'success');
     App.navigate('home');
   }
 };

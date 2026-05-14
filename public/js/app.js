@@ -58,6 +58,9 @@ const App = {
       } else if (hash === '#/login') {
         this.currentRoute = 'login';
         LoginComponent.render();
+      } else if (hash === '#/signup') {
+        this.currentRoute = 'signup';
+        SignupComponent.render();
       } else {
         this.currentRoute = 'home';
         hero.style.display = 'block';
@@ -86,6 +89,9 @@ const App = {
         break;
       case 'login':
         window.location.hash = '#/login';
+        break;
+      case 'signup':
+        window.location.hash = '#/signup';
         break;
       default:
         window.location.hash = '#/';

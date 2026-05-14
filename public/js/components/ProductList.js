@@ -44,7 +44,29 @@ const ProductList = {
       </div>`;
   },
 
-  renderProductCard(product, index) {
+  renderProductCard(product, index, qty = 0) {
+    let controlsHTML = '';
+    if (qty > 0) {
+      controlsHTML = `
+        <div class="qty-control" style="height: 36px; display: flex; border: 1px solid var(--accent); border-radius: var(--radius-md); overflow: hidden;">
+          <button class="qty-btn" style="background: var(--accent-glow); color: var(--accent);" onclick="ProductList.updateQty(${product.id}, ${qty - 1}, event)">−</button>
+          <div style="padding: 0 14px; font-weight: 600; font-size: 14px; background: var(--bg-card); display: flex; align-items: center; color: var(--text-primary);">${qty}</div>
+          <button class="qty-btn" style="background: var(--accent-glow); color: var(--accent);" onclick="ProductList.updateQty(${product.id}, ${qty + 1}, event)">+</button>
+        </div>
+      `;
+    } else {
+      controlsHTML = `
+        <button class="add-to-cart-btn" id="add-btn-${product.id}"
+                onclick="ProductList.addToCart(${product.id}, event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Add
+        </button>
+      `;
+    }
+
     return `
       <div class="product-card" style="animation-delay: ${index * 0.06}s" id="product-${product.id}">
         <div class="card-image-area">
@@ -59,19 +81,8 @@ const ProductList = {
               $${product.price.toFixed(2)}
               <span class="card-unit">/ ${product.unit}</span>
             </div>
-            <div style="display: flex; gap: 6px;">
-              <button class="add-to-cart-btn" style="padding: 0 12px; background: #f0f0f0; color: #333; border: 1px solid #ddd;"
-                      onclick="ProductList.removeFromCart(${product.id}, event)">
-                −
-              </button>
-              <button class="add-to-cart-btn" id="add-btn-${product.id}"
-                      onclick="ProductList.addToCart(${product.id}, event)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                Add
-              </button>
+            <div class="card-controls-wrapper" id="controls-${product.id}">
+              ${controlsHTML}
             </div>
           </div>
         </div>
@@ -88,13 +99,15 @@ const ProductList = {
       ${this.renderSkeleton()}`;
 
     try {
-      // Fetch categories and products
-      const [catData, prodData] = await Promise.all([
+      // Fetch categories, products, and cart
+      const [catData, prodData, cartData] = await Promise.all([
         API.getCategories(),
-        API.getProducts(this.activeCategory, searchQuery)
+        API.getProducts(this.activeCategory, searchQuery),
+        API.getCart().catch(() => ({ items: [] }))
       ]);
 
       this.categories = catData.categories;
+      this.productsCache = prodData.products; // cache products for re-rendering controls
 
       let productsHTML = '';
       if (prodData.products.length === 0) {
@@ -108,7 +121,11 @@ const ProductList = {
       } else {
         productsHTML = `
           <div class="product-grid">
-            ${prodData.products.map((p, i) => this.renderProductCard(p, i)).join('')}
+            ${prodData.products.map((p, i) => {
+              const cartItem = cartData.items?.find(item => item.productId === p.id);
+              const qty = cartItem ? cartItem.quantity : 0;
+              return this.renderProductCard(p, i, qty);
+            }).join('')}
           </div>`;
       }
 
@@ -139,56 +156,64 @@ const ProductList = {
   async addToCart(productId, event) {
     const btn = event.currentTarget;
     btn.disabled = true;
-    btn.innerHTML = `<span style="font-size:14px">✓</span> Added`;
-    btn.classList.add('added');
+    btn.innerHTML = `<span style="font-size:14px">⏳</span>`;
 
     try {
       const data = await API.addToCart(productId);
       App.updateCartBadge(data.cart.itemCount);
-      App.showToast(`${data.item.name} added to cart!`, 'success');
+      App.showToast(`Added to cart!`, 'success');
+      this.refreshProductControls(productId, 1);
     } catch (err) {
       App.showToast('Failed to add item', 'error');
-    }
-
-    setTimeout(() => {
       btn.disabled = false;
-      btn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        Add`;
-      btn.classList.remove('added');
-    }, 1200);
+      btn.innerHTML = `Add`;
+    }
   },
 
-  async removeFromCart(productId, event) {
-    const btn = event.currentTarget;
-    btn.disabled = true;
-
+  async updateQty(productId, newQty, event) {
+    const wrapper = event.currentTarget.closest('.qty-control');
+    if(wrapper) wrapper.style.pointerEvents = 'none';
+    
     try {
-      const cartData = await API.getCart();
-      const item = cartData.items.find(i => i.productId === productId);
-      
-      if (item) {
-        if (item.quantity > 1) {
-          const data = await API.updateCartItem(productId, item.quantity - 1);
-          App.updateCartBadge(data.cart.itemCount);
-          App.showToast(`Removed one item from cart`, 'success');
-        } else {
-          const data = await API.removeFromCart(productId);
-          App.updateCartBadge(data.cart.itemCount);
-          App.showToast(`Item removed from cart`, 'success');
-        }
+      if (newQty <= 0) {
+        const data = await API.removeFromCart(productId);
+        App.updateCartBadge(data.cart.itemCount);
+        App.showToast('Item removed from cart', 'success');
+        this.refreshProductControls(productId, 0);
       } else {
-        App.showToast('Item is not in cart', 'error');
+        const data = await API.updateCartItem(productId, newQty);
+        App.updateCartBadge(data.cart.itemCount);
+        this.refreshProductControls(productId, newQty);
       }
     } catch (err) {
-      App.showToast('Failed to remove item', 'error');
+      App.showToast('Failed to update quantity', 'error');
+      if(wrapper) wrapper.style.pointerEvents = 'auto';
     }
+  },
 
-    setTimeout(() => {
-      btn.disabled = false;
-    }, 500);
+  refreshProductControls(productId, qty) {
+    const controlsWrapper = document.getElementById(`controls-${productId}`);
+    if (controlsWrapper) {
+      if (qty > 0) {
+        controlsWrapper.innerHTML = `
+          <div class="qty-control" style="height: 36px; display: flex; border: 1px solid var(--accent); border-radius: var(--radius-md); overflow: hidden;">
+            <button class="qty-btn" style="background: var(--accent-glow); color: var(--accent);" onclick="ProductList.updateQty(${productId}, ${qty - 1}, event)">−</button>
+            <div style="padding: 0 14px; font-weight: 600; font-size: 14px; background: var(--bg-card); display: flex; align-items: center; color: var(--text-primary);">${qty}</div>
+            <button class="qty-btn" style="background: var(--accent-glow); color: var(--accent);" onclick="ProductList.updateQty(${productId}, ${qty + 1}, event)">+</button>
+          </div>
+        `;
+      } else {
+        controlsWrapper.innerHTML = `
+          <button class="add-to-cart-btn" id="add-btn-${productId}"
+                  onclick="ProductList.addToCart(${productId}, event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add
+          </button>
+        `;
+      }
+    }
   }
 };
