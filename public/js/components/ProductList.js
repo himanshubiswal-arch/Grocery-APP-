@@ -59,14 +59,20 @@ const ProductList = {
               $${product.price.toFixed(2)}
               <span class="card-unit">/ ${product.unit}</span>
             </div>
-            <button class="add-to-cart-btn" id="add-btn-${product.id}"
-                    onclick="ProductList.addToCart(${product.id}, event)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add
-            </button>
+            <div style="display: flex; gap: 6px;">
+              <button class="add-to-cart-btn" style="padding: 0 12px; background: #f0f0f0; color: #333; border: 1px solid #ddd;"
+                      onclick="ProductList.removeFromCart(${product.id}, event)">
+                −
+              </button>
+              <button class="add-to-cart-btn" id="add-btn-${product.id}"
+                      onclick="ProductList.addToCart(${product.id}, event)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add
+              </button>
+            </div>
           </div>
         </div>
       </div>`;
@@ -154,5 +160,35 @@ const ProductList = {
         Add`;
       btn.classList.remove('added');
     }, 1200);
+  },
+
+  async removeFromCart(productId, event) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+
+    try {
+      const cartData = await API.getCart();
+      const item = cartData.items.find(i => i.productId === productId);
+      
+      if (item) {
+        if (item.quantity > 1) {
+          const data = await API.updateCartItem(productId, item.quantity - 1);
+          App.updateCartBadge(data.cart.itemCount);
+          App.showToast(`Removed one item from cart`, 'success');
+        } else {
+          const data = await API.removeFromCart(productId);
+          App.updateCartBadge(data.cart.itemCount);
+          App.showToast(`Item removed from cart`, 'success');
+        }
+      } else {
+        App.showToast('Item is not in cart', 'error');
+      }
+    } catch (err) {
+      App.showToast('Failed to remove item', 'error');
+    }
+
+    setTimeout(() => {
+      btn.disabled = false;
+    }, 500);
   }
 };

@@ -55,6 +55,9 @@ const App = {
       } else if (hash === '#/orders') {
         this.currentRoute = 'orders';
         Checkout.renderOrders();
+      } else if (hash === '#/login') {
+        this.currentRoute = 'login';
+        LoginComponent.render();
       } else {
         this.currentRoute = 'home';
         hero.style.display = 'block';
@@ -81,6 +84,9 @@ const App = {
       case 'orders':
         window.location.hash = '#/orders';
         break;
+      case 'login':
+        window.location.hash = '#/login';
+        break;
       default:
         window.location.hash = '#/';
     }
@@ -96,6 +102,10 @@ const App = {
     const ordersLink = document.getElementById('nav-orders');
     if (ordersLink) {
       ordersLink.classList.toggle('active', this.currentRoute === 'orders');
+    }
+    const loginLink = document.getElementById('nav-login');
+    if (loginLink) {
+      loginLink.classList.toggle('active', this.currentRoute === 'login');
     }
   },
 
